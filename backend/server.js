@@ -5,6 +5,7 @@ const router = express.Router();
 const userRoutes = require('./routes/userRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 
@@ -16,6 +17,8 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
 
 // Connect DB & Start server
 connectDB();
