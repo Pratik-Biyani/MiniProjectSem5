@@ -7,6 +7,11 @@ const userRoutes = require('./routes/userRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+// server.js - Add this after other route imports
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
+
+
+
 
 const app = express();
 
@@ -22,6 +27,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api', require('./routes/blogRoutes'));
 app.use('/api', require('./routes/startupRoutes'));
+// Add to your routes section
+app.use('/api/subscriptions', subscriptionRoutes);
 
 
 // Connect DB & Start server

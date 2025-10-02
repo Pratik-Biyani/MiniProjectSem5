@@ -1,3 +1,4 @@
+// models/User.js - Updated schema
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
@@ -11,7 +12,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       validate: {
         validator: function (value) {
-          // domain is required only if role = "startup"
           if (this.role === 'startup' && !value) {
             return false;
           }
@@ -20,6 +20,28 @@ const userSchema = new mongoose.Schema(
         message: 'Domain is required for startups',
       },
     },
+
+    // Enhanced subscription fields
+    subscription: {
+      plan: {
+        type: String,
+        enum: ['basic', 'premium', 'enterprise'],
+        default: 'basic'
+      },
+      status: {
+        type: String,
+        enum: ['active', 'inactive', 'canceled', 'past_due'],
+        default: 'active'
+      },
+      stripeCustomerId: String,
+      stripeSubscriptionId: String,
+      currentPeriodStart: Date,
+      currentPeriodEnd: Date,
+      cancelAtPeriodEnd: {
+        type: Boolean,
+        default: false
+      }
+    }
   },
   { timestamps: true }
 );
