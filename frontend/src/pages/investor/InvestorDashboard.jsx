@@ -6,6 +6,8 @@ import InvestorAnalytics from './InvestorAnalytics';
 import InvestorStartupAnalytics from './InvestorStartupAnalytics';
 import InvestorBlogs from './InvestorBlogs';
 import ProfileModal from '../../components/ProfileModal';
+import Chat from '../Chat'
+import BrowseStartupsPage from './BrowseStartups';
 
 const InvestorDashboard = () => {
   const [activeSection, setActiveSection] = useState('analytics');
@@ -28,6 +30,14 @@ const InvestorDashboard = () => {
     blogs: {
       title: 'Investor Insights',
       component: <InvestorBlogs />
+    },
+    chats: {
+      title: 'Chats',
+      component: <Chat />
+    },
+    startups: {
+      title: 'Browse Startups',
+      component: <BrowseStartupsPage />
     }
   };
 

@@ -7,6 +7,8 @@ import StartupAnalysis from './StartupAnalysis';
 import StartupBlogs from './StartupBlogs';
 import BrowseEvents from './BrowseEvents';
 import ProfileModal from '../../components/ProfileModal';
+import Chat from '../Chat'
+import BrowseInvestorsPage from './BrowseInvestors';
 
 const StartupDashboard = () => {
   const [activeSection, setActiveSection] = useState('analytics');
@@ -33,6 +35,14 @@ const StartupDashboard = () => {
     events: {
       title: 'Browse Events',
       component: <BrowseEvents />
+    },
+    chats: {
+      title: 'Chats',
+      component: <Chat />
+    },
+    investors: {
+      title: 'Browse Investors',
+      component: <BrowseInvestorsPage />  
     }
   };
 

@@ -21,12 +21,14 @@ import StartupAddMetrics from './pages/startup/StartupAddMetrics';
 import StartupBlogs from './pages/startup/StartupBlogs';
 import StartupAnalysis from './pages/startup/StartupAnalysis';
 import StartupAnalysisHistory from './pages/startup/StartupAnalysisHistory';
+import BrowseInvestorsPage from './pages/startup/BrowseInvestors';
 
 // Investor Pages
 import InvestorAnalytics from './pages/investor/InvestorAnalytics';
 import InvestorStartupAnalytics from './pages/investor/InvestorStartupAnalytics';
 import InvestorBlogs from './pages/investor/InvestorBlogs';
 import InvestorCreateBlog from './pages/investor/InvestorCreateBlog';
+import BrowseStartupsPage from './pages/investor/BrowseStartups';
 
 // Dashboards
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -75,6 +77,7 @@ const App = () => {
           <Route path="/startup/:startup_id/analysis-history" element={<StartupAnalysisHistory />} />
           <Route path="/startup/:startup_id/dashboard" element={<StartupDashboard />} />
           <Route path="/startup/:startup_id/chats" element={<Chat />} />
+          <Route path="/startup/:startup_id/browse-investors" element={<BrowseInvestorsPage />} />
 
           {/* Investor Routes */}
           <Route path="/investor/:investor_id/analytics" element={<InvestorAnalytics />} />
@@ -83,6 +86,7 @@ const App = () => {
           <Route path="/investor/:investor_id/create-blog" element={<InvestorCreateBlog />} />
           <Route path="/investor/:investor_id/dashboard" element={<InvestorDashboard />} />
           <Route path="/investor/:investor_id/chats" element={<Chat />} />
+          <Route path="/investor/:investor_id/browse-startups" element={<BrowseStartupsPage />} />
 
           {/* Video Call */}
           <Route path="/call/:roomId" element={<VideoCall />} />
