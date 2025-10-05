@@ -1,49 +1,57 @@
 // routes/subscriptionRoutes.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
 
-// Mock subscription endpoint
+// Mock subscription route
 router.post('/create-checkout-session', async (req, res) => {
   try {
-    const { userId, planId, planName, price } = req.body;
+    console.log('📦 Subscription request received:', req.body);
     
-    console.log('📦 Creating mock subscription:', {
-      userId,
-      planId, 
-      planName,
-      price
-    });
+    const { userId, planId, planName, price } = req.body;
 
-    // Mock successful subscription response
+    // Validate required fields
+    if (!userId || !planId || !planName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: userId, planId, planName'
+      });
+    }
+
+    // Mock successful response
     res.json({
       success: true,
       message: `Mock subscription created for ${planName} plan`,
-      url: `/subscription/success?user_id=${userId}&plan=${planId}`,
+      data: {
+        sessionId: `mock_session_${Date.now()}`,
+        url: `/subscription/success?user_id=${userId}&plan=${planId}`,
+        planName,
+        price: price || 0
+      },
       mock: true
     });
+    
   } catch (error) {
     console.error('❌ Subscription error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create subscription',
+      error: error.message
+    });
   }
 });
 
-// Get subscription status
-router.get('/:userId', async (req, res) => {
-  try {
-    const user = await User.findById(req.params.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+// Get available plans
+router.get('/plans', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      plans: [
+        { id: 'basic', name: 'Basic', price: 0, features: ['Feature 1', 'Feature 2'] },
+        { id: 'premium', name: 'Premium', price: 29, features: ['All Basic features', 'Premium Feature 1'] },
+        { id: 'enterprise', name: 'Enterprise', price: 99, features: ['All Premium features', 'Enterprise Support'] }
+      ]
     }
-    
-    res.json({
-      plan: user.subscription?.plan || 'basic',
-      status: user.subscription?.status || 'inactive',
-      currentPeriodEnd: user.subscription?.currentPeriodEnd
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  });
 });
 
 module.exports = router;

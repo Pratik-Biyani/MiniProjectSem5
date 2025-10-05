@@ -87,8 +87,7 @@ function Pay() {
 
   return (
     <div className="container mt-5">
-      <h2>Pay Now</h2>
-      <button className="btn btn-primary" onClick={handlePayment}>
+      <button className="btn btn-primary btn-lg mt-3" onClick={handlePayment}>
         Pay ₹{amount}
       </button>
     </div>

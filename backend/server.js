@@ -11,12 +11,8 @@ const userRoutes = require('./routes/userRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
-// server.js - Add this after other route imports
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
-
-
-
-
+const authRoutes = require('./routes/authRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const startupRoutes = require('./routes/startupRoutes');
 
@@ -53,6 +49,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api', blogRoutes);
 app.use('/api', startupRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/subscriptions', subscriptionRoutes); // Subscription routes
 
 // Chat routes
 app.use('/api/chat', chatRoutes);
@@ -113,13 +111,14 @@ app.get('/api/users/call/:userId', async (req, res) => {
   }
 });
 
-// Health check endpoint
+// Update the health check to include auth status
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'Server is running',
     timestamp: new Date().toISOString(),
     services: {
+      auth: 'active',
       chat: 'active',
       webrtc: 'active',
       socket: 'active',
@@ -146,4 +145,5 @@ server.listen(PORT, () => {
   console.log(`🎥 WebRTC service initialized`);
   console.log(`🔌 Socket.IO server active`);
   console.log(`🌐 CORS enabled for: http://localhost:5173`);
+  console.log(`💰 Subscription routes: /api/subscriptions/create-checkout-session`);
 });
