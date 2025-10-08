@@ -9,6 +9,8 @@ import BrowseEvents from './BrowseEvents';
 import ProfileModal from '../../components/ProfileModal';
 import Chat from '../Chat'
 import BrowseInvestorsPage from './BrowseInvestors';
+import ResourcesPage from '../ResourcesPage';
+import GovermentSchemes from '../GovernmentSchemes';
 
 const StartupDashboard = () => {
   const [activeSection, setActiveSection] = useState('analytics');
@@ -43,6 +45,14 @@ const StartupDashboard = () => {
     investors: {
       title: 'Browse Investors',
       component: <BrowseInvestorsPage />  
+    },
+    resources: {
+      title: 'Resources',
+      component: <ResourcesPage/>
+    },
+    govt_schemes: {
+      title: 'Government Schemes',
+      component: <GovermentSchemes/>
     }
   };
 

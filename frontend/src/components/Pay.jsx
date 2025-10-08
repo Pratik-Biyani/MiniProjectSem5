@@ -86,10 +86,19 @@ function Pay() {
   };
 
   return (
-    <div className="container mt-5">
-      <button className="btn btn-primary btn-lg mt-3" onClick={handlePayment}>
-        Pay ₹{amount}
-      </button>
+    <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <div className="text-center bg-white p-8 rounded-lg shadow-lg">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">Subscribe Now</h2>
+        <p className="text-lg text-gray-600 mb-6">
+          Start your subscription with ₹{amount} today!
+        </p>
+        <button
+          onClick={handlePayment}
+          className="px-6 py-3 bg-blue-500 text-white font-semibold rounded-full text-lg shadow-lg hover:bg-blue-600 transition-colors duration-300 transform hover:scale-105"
+        >
+          Pay ₹{amount}
+        </button>
+      </div>
     </div>
   );
 }
