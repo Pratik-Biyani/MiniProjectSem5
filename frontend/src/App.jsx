@@ -11,6 +11,7 @@ import RegisterPage from './pages/RegisterPage';
 // Public Pages
 import LandingPage from './pages/LandingPage';
 import ResourcesPage from './pages/ResourcesPage';
+import GovernmentSchemes from './pages/GovernmentSchemes';
 
 // Admin Pages
 import AdminEventsPage from './pages/admin/AdminEventsPage';
@@ -101,6 +102,7 @@ const App = () => {
             } />
             <Route path="/resources" element={<ResourcesPage />} />
             <Route path="/pay" element={<Pay />} />
+            <Route path="/govt_schemes" element={<GovernmentSchemes />} />
 
             {/* Subscription Routes - Public for now, can be protected if needed */}
             <Route path="/investor/:investor_id/subscription" element={<SubscriptionPage />} />
