@@ -1,4 +1,4 @@
-// utils/api.js - Enhanced version
+// utils/api.js - Enhanced version with better error handling
 const API_BASE_URL = 'http://localhost:5001/api';
 
 export const api = {
@@ -12,11 +12,15 @@ export const api = {
         },
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        error.response = { data, status: response.status };
+        throw error;
       }
 
-      return await response.json();
+      return data;
     } catch (error) {
       console.error('API GET error:', error);
       throw error;
@@ -26,6 +30,8 @@ export const api = {
   post: async (url, data) => {
     try {
       const token = localStorage.getItem('token');
+      console.log('🚀 API POST Request:', url, data);
+      
       const response = await fetch(`${API_BASE_URL}${url}`, {
         method: 'POST',
         headers: {
@@ -35,11 +41,22 @@ export const api = {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        responseData = { message: 'Invalid JSON response from server' };
       }
 
-      return await response.json();
+      console.log('📨 API POST Response:', response.status, responseData);
+
+      if (!response.ok) {
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        error.response = { data: responseData, status: response.status };
+        throw error;
+      }
+
+      return responseData;
     } catch (error) {
       console.error('API POST error:', error);
       throw error;
@@ -58,11 +75,15 @@ export const api = {
         body: JSON.stringify(data),
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        error.response = { data: responseData, status: response.status };
+        throw error;
       }
 
-      return await response.json();
+      return responseData;
     } catch (error) {
       console.error('API PUT error:', error);
       throw error;
@@ -80,11 +101,15 @@ export const api = {
         },
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        error.response = { data, status: response.status };
+        throw error;
       }
 
-      return await response.json();
+      return data;
     } catch (error) {
       console.error('API DELETE error:', error);
       throw error;

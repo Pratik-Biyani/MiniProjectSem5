@@ -11,6 +11,7 @@ import Chat from '../Chat'
 import BrowseInvestorsPage from './BrowseInvestors';
 import ResourcesPage from '../ResourcesPage';
 import GovermentSchemes from '../GovernmentSchemes';
+import StartupAddMetrics from './StartupAddMetrics';
 
 const StartupDashboard = () => {
   const [activeSection, setActiveSection] = useState('analytics');
@@ -25,6 +26,10 @@ const StartupDashboard = () => {
     analytics: {
       title: 'Startup Analytics',
       component: <StartupAnalytics />
+    },
+    addMetrics: {
+      title: 'Add Metrics',
+      component: <StartupAddMetrics />
     },
     analysis: {
       title: 'Startup Analysis',

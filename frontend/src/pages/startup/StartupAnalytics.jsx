@@ -13,27 +13,61 @@ const StartupAnalytics = () => {
   const [metrics, setMetrics] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [availablePeriods, setAvailablePeriods] = useState([]);
+  const [loading, setLoading] = useState(false); // ← ADD THIS LINE
 
   useEffect(() => {
-    async function fetchMetrics() {
-      const res = await api.get(`/analytics/startup/${startup_id}/metrics`);
-      
-      // Sort metrics chronologically by period
-      const sortedMetrics = res.data.sort((a, b) => {
-        const [aMonth, aYear] = a.period.split(' ');
-        const [bMonth, bYear] = b.period.split(' ');
-        const aDate = new Date(`${aMonth} 1, ${aYear}`);
-        const bDate = new Date(`${bMonth} 1, ${aYear}`);
-        return aDate - bDate;
-      });
-      
-      setAllMetrics(sortedMetrics);
-      setMetrics(sortedMetrics);
-      
-      // Extract unique periods for filter
-      const periods = [...new Set(sortedMetrics.map(m => m.period))];
-      setAvailablePeriods(periods);
-    }
+    const fetchMetrics = async () => {
+      try {
+        setLoading(true); // ← NOW THIS WILL WORK
+        const res = await api.get(`/analytics/startup/${startup_id}/metrics`);
+        console.log('📊 Metrics API Response:', res);
+        
+        // Handle different response structures
+        let metricsData = [];
+        
+        if (res && res.success) {
+          // Structure: {success: true, data: []}
+          metricsData = res.data || [];
+        } else if (res && res.data) {
+          // Structure: {data: []}
+          metricsData = Array.isArray(res.data) ? res.data : [];
+        } else if (Array.isArray(res)) {
+          // Structure: direct array
+          metricsData = res;
+        } else {
+          // Try to extract metrics from various possible locations
+          metricsData = res?.metrics || res?.data?.metrics || [];
+        }
+        
+        // Sort metrics chronologically by period
+        const sortedMetrics = metricsData.sort((a, b) => {
+          try {
+            const [aMonth, aYear] = a.period.split(' ');
+            const [bMonth, bYear] = b.period.split(' ');
+            const aDate = new Date(`${aMonth} 1, ${aYear}`);
+            const bDate = new Date(`${bMonth} 1, ${bYear}`);
+            return aDate.getTime() - bDate.getTime();
+          } catch (error) {
+            return 0;
+          }
+        });
+        
+        setAllMetrics(sortedMetrics);
+        setMetrics(sortedMetrics);
+        
+        // Extract unique periods for filter
+        const periods = [...new Set(sortedMetrics.map(m => m.period))];
+        setAvailablePeriods(periods);
+      } catch (error) {
+        console.error('❌ Error fetching metrics:', error);
+        setAllMetrics([]);
+        setMetrics([]);
+        setAvailablePeriods([]);
+      } finally {
+        setLoading(false); // ← AND THIS WILL WORK TOO
+      }
+    };
+    
     fetchMetrics();
   }, [startup_id]);
 
@@ -45,6 +79,41 @@ const StartupAnalytics = () => {
       setMetrics(allMetrics.filter(m => m.period === selectedPeriod));
     }
   }, [selectedPeriod, allMetrics]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading analytics data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state if no metrics
+  if (metrics.length === 0 && !loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Analytics Data</h2>
+            <p className="text-gray-600 mb-4">
+              No metrics data found for your startup. Analytics will appear here once you add your first metrics.
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+            >
+              Refresh Data
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const latestMetric = metrics[metrics.length - 1] || {};
   const previousMetric = metrics[metrics.length - 2] || {};
@@ -407,7 +476,7 @@ const StartupAnalytics = () => {
     },
   };
 
-    const StatCard = ({ icon: Icon, title, value, change, gradient, subtitle }) => (
+  const StatCard = ({ icon: Icon, title, value, change, gradient, subtitle }) => (
     <div className={`relative overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${gradient}`}>
       <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8">
         <div className="absolute inset-0 bg-white opacity-10 rounded-full"></div>

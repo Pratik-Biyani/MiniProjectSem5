@@ -6,15 +6,36 @@ const BrowseEvents = () => {
   const { startup_id } = useParams();
   const [events, setEvents] = useState([]);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch user data - Based on your console log, it returns user object directly
+      const userRes = await api.get(`/users/${startup_id}`);
+      console.log('👤 User API Response:', userRes);
+      
+      // Your user API returns the user object directly, not wrapped in success/data
+      setUser(userRes || {});
+
+      // Fetch events data - Based on your console log, it returns array directly
+      const eventsRes = await api.get('/events');
+      console.log('📅 Events API Response:', eventsRes);
+      
+      // Your events API returns the array directly
+      setEvents(Array.isArray(eventsRes) ? eventsRes : []);
+      
+    } catch (error) {
+      console.error('❌ Error fetching data:', error);
+      setUser({});
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const userRes = await api.get(`/users/${startup_id}`);
-      setUser(userRes.data);
-
-      const eventsRes = await api.get('/events');
-      setEvents(eventsRes.data);
-    };
     fetchData();
   }, [startup_id]);
 
@@ -24,7 +45,7 @@ const BrowseEvents = () => {
       alert('Booking confirmed! Check your email.');
       setEvents(events.map(e => e._id === eventId ? {...e, bookedSlots: e.bookedSlots + 1} : e));
     } catch (err) {
-      alert(err.response.data.error);
+      alert(err.response?.data?.error || 'Booking failed');
     }
   };
 
@@ -64,9 +85,11 @@ const BrowseEvents = () => {
 
   const getButtonState = (event) => {
     const isFull = event.bookedSlots >= event.totalSlots;
-    const canBook = user?.isSubscribed && !isFull;
     
-    if (!user?.isSubscribed) {
+    // Check subscription status - your user object has subscription data
+    const isSubscribed = user?.subscription?.status === 'active'; // Adjust based on your subscription structure
+    
+    if (!isSubscribed) {
       return {
         text: 'Subscription Required',
         disabled: true,
@@ -87,7 +110,7 @@ const BrowseEvents = () => {
     }
   };
 
-  if (!user) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
@@ -110,11 +133,12 @@ const BrowseEvents = () => {
             </div>
             <div className="text-right">
               <div className="flex items-center space-x-2">
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${user.isSubscribed ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-yellow-100 text-yellow-800 border border-yellow-200'}`}>
-                  {user.isSubscribed ? 'Premium Member' : 'Free Member'}
+                {/* Check subscription status based on your user object structure */}
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${user?.subscription?.status === 'active' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-yellow-100 text-yellow-800 border border-yellow-200'}`}>
+                  {user?.subscription?.status === 'active' ? 'Premium Member' : 'Free Member'}
                 </div>
               </div>
-              {!user.isSubscribed && (
+              {user?.subscription?.status !== 'active' && (
                 <p className="text-sm text-gray-500 mt-1">Subscribe to book events</p>
               )}
             </div>
@@ -217,7 +241,7 @@ const BrowseEvents = () => {
                         {buttonState.text}
                       </button>
                       
-                      {!user.isSubscribed && (
+                      {user?.subscription?.status !== 'active' && (
                         <p className="text-xs text-gray-500 text-center mt-2">
                           Premium subscription required to book events
                         </p>

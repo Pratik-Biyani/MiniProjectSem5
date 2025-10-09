@@ -17,16 +17,29 @@ const StartupBlogs = () => {
   };
 
   const fetchBlogs = async (page = 1) => {
-    try {
-      const res = await api.get(`/blogs?page=${page}&limit=10`);
-      setBlogs(res.data.blogs);
-      setTotalPages(res.data.pagination.pages);
-    } catch (error) {
-      console.error('Error fetching blogs:', error);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    const res = await api.get(`/blogs?page=${page}&limit=10`);
+    console.log('📝 Blog API Response:', res);
+    
+    // SIMPLIFIED: Your API returns {success: true, blogs: [], pagination: {}}
+    if (res && res.success) {
+      setBlogs(res.blogs || []);
+      setTotalPages(res.pagination?.pages || 1);
+    } else {
+      // If structure is different, try to find blogs data
+      console.log('📝 Alternative response structure:', res);
+      const blogsData = res?.blogs || res?.data?.blogs || res?.data || [];
+      setBlogs(Array.isArray(blogsData) ? blogsData : []);
+      setTotalPages(res?.pagination?.pages || 1);
     }
-  };
+  } catch (error) {
+    console.error('❌ Error fetching blogs:', error);
+    setBlogs([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchBlogs(currentPage);

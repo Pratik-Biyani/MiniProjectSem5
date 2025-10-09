@@ -6,6 +6,7 @@ const StartupAnalysis = () => {
   const { startup_id } = useParams();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -34,6 +35,7 @@ const StartupAnalysis = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
     try {
       // Prepare payload with proper data types
@@ -51,18 +53,34 @@ const StartupAnalysis = () => {
         expected_monthly_growth_pct: Number(formData.expected_monthly_growth_pct)
       };
 
+      console.log('📤 Submitting startup analysis:', payload);
+
       const response = await api.post('/startups', payload);
-      setResult(response.data.startup);
+      console.log('📥 Startup analysis response:', response);
+
+      // Handle different response structures
+      if (response && response.success) {
+        setResult(response.data || response.startup || response);
+      } else {
+        // If structure is different, try to find the data
+        const resultData = response?.data || response?.startup || response;
+        if (resultData) {
+          setResult(resultData);
+        } else {
+          throw new Error('Invalid response format from server');
+        }
+      }
     } catch (error) {
-      console.error('Error analyzing startup:', error);
-      alert('Error analyzing startup. Please try again.');
+      console.error('❌ Error analyzing startup:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Error analyzing startup. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const getVerdictColor = (verdict) => {
-    switch (verdict) {
+    switch (verdict?.toLowerCase()) {
       case 'viable': return 'text-green-600 bg-green-100';
       case 'caution': return 'text-yellow-600 bg-yellow-100';
       case 'risky': return 'text-red-600 bg-red-100';
@@ -98,6 +116,23 @@ const StartupAnalysis = () => {
             Get AI-powered analysis of your startup with detailed scoring, financial projections, and recommendations
           </p>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {!result ? (
           /* Analysis Form */
@@ -318,7 +353,7 @@ const StartupAnalysis = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors duration-200"
                 >
                   {loading ? 'Analyzing...' : 'Analyze Startup'}
                 </button>
@@ -336,33 +371,39 @@ const StartupAnalysis = () => {
                   <p className="text-gray-600 mt-1">{result.description}</p>
                 </div>
                 <div className="text-right">
-                  <div className={`text-4xl font-bold ${getScoreColor(result.result.score)}`}>
-                    {result.result.score}/100
+                  <div className={`text-4xl font-bold ${getScoreColor(result.result?.score)}`}>
+                    {result.result?.score || 0}/100
                   </div>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getVerdictColor(result.result.verdict)}`}>
-                    {result.result.verdict.toUpperCase()}
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getVerdictColor(result.result?.verdict)}`}>
+                    {(result.result?.verdict || 'UNKNOWN').toUpperCase()}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Component Scores */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Component Scores</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {Object.entries(result.result.components).map(([key, score]) => (
-                  <div key={key} className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{score}</div>
-                    <div className="text-sm text-gray-600 capitalize">
-                      {key === 'comp' ? 'Competition' : key === 'unit' ? 'Unit Econ' : key}
+            {result.result?.components && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Component Scores</h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {Object.entries(result.result.components).map(([key, score]) => (
+                    <div key={key} className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{score}</div>
+                      <div className="text-sm text-gray-600 capitalize">
+                        {key === 'comp' ? 'Competition' : 
+                         key === 'unit' ? 'Unit Econ' : 
+                         key === 'market' ? 'Market' :
+                         key === 'team' ? 'Team' :
+                         key === 'financials' ? 'Financials' : key}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* AI Analysis */}
-            {result.result.openai_analysis && (
+            {result.result?.openai_analysis && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Analysis</h3>
                 <div className="prose max-w-none">
@@ -372,66 +413,73 @@ const StartupAnalysis = () => {
             )}
 
             {/* Suggestions */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recommendations</h3>
-              <ul className="space-y-2">
-                {result.result.suggestions.map((suggestion, index) => (
-                  <li key={index} className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                    <span className="text-gray-700">{suggestion}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {result.result?.suggestions && result.result.suggestions.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recommendations</h3>
+                <ul className="space-y-2">
+                  {result.result.suggestions.map((suggestion, index) => (
+                    <li key={index} className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+                      <span className="text-gray-700">{suggestion}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Financial Projections */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Projections</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Burn</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {result.result.projection.monthly.slice(0, 12).map((month) => (
-                      <tr key={month.month}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          Month {month.month}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${month.revenue.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${month.burn.toLocaleString()}
-                        </td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                          month.profit >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          ${month.profit.toLocaleString()}
-                        </td>
+            {result.result?.projection?.monthly && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Projections</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Burn</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {result.result.projection.breakEvenMonth && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                  <p className="text-blue-800 font-medium">
-                    Projected Break-even: Month {result.result.projection.breakEvenMonth}
-                  </p>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {result.result.projection.monthly.slice(0, 12).map((month) => (
+                        <tr key={month.month}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            Month {month.month}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${(month.revenue || 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${(month.burn || 0).toLocaleString()}
+                          </td>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                            (month.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            ${(month.profit || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
+                {result.result.projection.breakEvenMonth && (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <p className="text-blue-800 font-medium">
+                      Projected Break-even: Month {result.result.projection.breakEvenMonth}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex justify-end space-x-4">
               <button
-                onClick={() => setResult(null)}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                onClick={() => {
+                  setResult(null);
+                  setError('');
+                }}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
               >
                 Analyze Another Startup
               </button>
