@@ -4,7 +4,7 @@ import { api } from '../../api/api';
 import { Search, Building2, TrendingUp, Filter, ArrowRight, BarChart3, Briefcase, Shield } from 'lucide-react';
 
 const AdminAnalytics = () => {
-  const { admin_id } = useParams(); // Changed to admin_id
+  const { admin_id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [startups, setStartups] = useState([]);
   const [domain, setDomain] = useState(searchParams.get('domain') || '');
@@ -15,9 +15,14 @@ const AdminAnalytics = () => {
       setIsLoading(true);
       try {
         const res = await api.get(`/analytics/startups${domain ? `?domain=${domain}` : ''}`);
-        setStartups(res.data);
+        console.log('📊 Startups API Response:', res);
+        
+        // Handle different response structures
+        const startupsData = res?.data || res?.startups || res || [];
+        setStartups(Array.isArray(startupsData) ? startupsData : []);
       } catch (err) {
-        console.error('Failed to fetch startups:', err);
+        console.error('❌ Failed to fetch startups:', err);
+        setStartups([]);
       } finally {
         setIsLoading(false);
       }
@@ -26,7 +31,11 @@ const AdminAnalytics = () => {
   }, [domain]);
 
   const handleApplyFilter = () => {
-    setSearchParams({ domain });
+    if (domain.trim()) {
+      setSearchParams({ domain: domain.trim() });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const handleClearFilter = () => {
@@ -35,7 +44,7 @@ const AdminAnalytics = () => {
   };
 
   // Get unique domains for quick filter suggestions
-  const uniqueDomains = [...new Set(startups.map(s => s.domain))];
+  const uniqueDomains = [...new Set(startups.map(s => s.domain).filter(Boolean))];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
@@ -44,7 +53,7 @@ const AdminAnalytics = () => {
         <div className="mb-8">
           <div className="flex items-center mb-3">
             <div className="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl mr-4 shadow-lg">
-              <Shield className="w-8 h-8 text-white" /> {/* Changed to Shield icon */}
+              <Shield className="w-8 h-8 text-white" />
             </div>
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-1">Admin Analytics Dashboard</h1>
@@ -69,20 +78,31 @@ const AdminAnalytics = () => {
                 value={domain}
                 onChange={e => setDomain(e.target.value)}
                 placeholder="Enter domain (e.g., FinTech, HealthTech)"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleApplyFilter();
+                  }
+                }}
               />
             </div>
             <div className="flex gap-2">
               <button 
                 onClick={handleApplyFilter} 
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
               >
-                <Filter className="w-4 h-4" />
-                Apply
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <Filter className="w-4 h-4" />
+                )}
+                {isLoading ? 'Loading...' : 'Apply'}
               </button>
               {domain && (
                 <button 
                   onClick={handleClearFilter} 
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-all"
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-all disabled:opacity-50"
+                  disabled={isLoading}
                 >
                   Clear
                 </button>
@@ -103,6 +123,7 @@ const AdminAnalytics = () => {
                       setSearchParams({ domain: d });
                     }}
                     className="bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border border-blue-200 px-3 py-1.5 rounded-lg text-sm font-semibold text-gray-700 transition-all"
+                    disabled={isLoading}
                   >
                     {d}
                   </button>
@@ -159,6 +180,9 @@ const AdminAnalytics = () => {
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-indigo-600" />
               All Startups {domain && `- ${domain}`}
+              {isLoading && (
+                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin ml-2"></div>
+              )}
             </h3>
           </div>
 
@@ -170,10 +194,20 @@ const AdminAnalytics = () => {
           ) : startups.length === 0 ? (
             <div className="p-12 text-center">
               <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 font-medium">No startups found</p>
-              <p className="text-sm text-gray-500 mt-1">
-                {domain ? 'Try adjusting your filter' : 'No startups registered in the platform'}
+              <p className="text-gray-600 font-medium">
+                {domain ? 'No startups found for this domain' : 'No startups registered in the platform'}
               </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {domain ? 'Try adjusting your filter or clear it to see all startups' : 'Startups will appear here once they register'}
+              </p>
+              {domain && (
+                <button
+                  onClick={handleClearFilter}
+                  className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Clear Filter
+                </button>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -189,11 +223,11 @@ const AdminAnalytics = () => {
                     </div>
                     <div>
                       <h4 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                        {s.name}
+                        {s.name || 'Unnamed Startup'}
                       </h4>
                       <p className="text-sm text-gray-600 flex items-center gap-1">
                         <span className="inline-block w-2 h-2 bg-indigo-400 rounded-full"></span>
-                        {s.domain}
+                        {s.domain || 'No domain specified'}
                       </p>
                     </div>
                   </div>

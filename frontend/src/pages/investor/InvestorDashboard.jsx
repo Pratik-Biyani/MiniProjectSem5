@@ -23,10 +23,10 @@ const InvestorDashboard = () => {
       title: 'Portfolio Analytics',
       component: <InvestorAnalytics />
     },
-    startupAnalytics: {
-      title: 'Startup Analytics',
-      component: <InvestorStartupAnalytics />
-    },
+    // startupAnalytics: {
+    //   title: 'Investor Analytics',
+    //   component: <InvestorStartupAnalytics />
+    // },
     blogs: {
       title: 'Investor Insights',
       component: <InvestorBlogs />

@@ -5,6 +5,7 @@ import { api } from '../../api/api';
 const AdminEventsPage = () => {
   const { admin_id } = useParams();
   const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   // Form state
@@ -20,10 +21,18 @@ const AdminEventsPage = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
+        setLoading(true);
         const res = await api.get('/events');
-        setEvents(res.data);
+        console.log('📅 Events API Response:', res);
+        
+        // Handle different response structures
+        const eventsData = res?.data || res?.events || res || [];
+        setEvents(Array.isArray(eventsData) ? eventsData : []);
       } catch (err) {
-        console.error(err);
+        console.error('❌ Error fetching events:', err);
+        setEvents([]);
+      } finally {
+        setLoading(false);
       }
     };
     fetchEvents();
@@ -33,7 +42,7 @@ const AdminEventsPage = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post('/events', {
+      const payload = {
         title,
         type,
         description,
@@ -44,21 +53,34 @@ const AdminEventsPage = () => {
         bookedSlots: 0,
         createdBy: admin_id,
         status: 'Upcoming',
-      });
-      setEvents([...events, res.data]); // Add new event to list
-      // Reset form
-      setTitle('');
-      setType('Funding');
-      setDescription('');
-      setDate('');
-      setTime('');
-      setLocation('');
-      setTotalSlots(10);
-      setShowForm(false); // Hide form after successful creation
-      alert('Event created successfully!');
+      };
+
+      console.log('📤 Creating event with payload:', payload);
+      const res = await api.post('/events', payload);
+      console.log('✅ Event creation response:', res);
+
+      // Handle different response structures
+      const newEvent = res?.data || res?.event || res;
+      
+      if (newEvent) {
+        setEvents(prev => [...prev, newEvent]);
+        // Reset form
+        setTitle('');
+        setType('Funding');
+        setDescription('');
+        setDate('');
+        setTime('');
+        setLocation('');
+        setTotalSlots(10);
+        setShowForm(false);
+        alert('Event created successfully!');
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
-      console.error(err);
-      alert('Error creating event');
+      console.error('❌ Error creating event:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Error creating event';
+      alert(errorMessage);
     }
   };
 
@@ -73,13 +95,18 @@ const AdminEventsPage = () => {
   };
 
   const formatDate = (dateString, timeString) => {
-    const eventDate = new Date(dateString);
-    const formattedDate = eventDate.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-    return `${formattedDate} at ${timeString}`;
+    if (!dateString) return 'Date not set';
+    try {
+      const eventDate = new Date(dateString);
+      const formattedDate = eventDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      return `${formattedDate} at ${timeString || 'Time not set'}`;
+    } catch (error) {
+      return 'Invalid date';
+    }
   };
 
   const getOccupancyColor = (booked, total) => {
@@ -88,6 +115,17 @@ const AdminEventsPage = () => {
     if (percentage >= 70) return 'text-yellow-600';
     return 'text-green-600';
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 mt-4 text-center">Loading events...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,119 +162,121 @@ const AdminEventsPage = () => {
               <p className="text-sm text-gray-600 mt-1">Fill in the details to create a new event</p>
             </div>
           
-          <form onSubmit={handleCreate} className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Event Title</label>
-                <input
-                  type="text"
-                  placeholder="Enter event title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  required
-                />
+            <form onSubmit={handleCreate} className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Title</label>
+                  <input
+                    type="text"
+                    placeholder="Enter event title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="Funding">Funding</option>
+                    <option value="Pitching">Pitching</option>
+                    <option value="Networking">Networking</option>
+                    <option value="Fair">Fair</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Total Slots</label>
+                  <input
+                    type="number"
+                    placeholder="Enter total slots"
+                    value={totalSlots}
+                    onChange={(e) => setTotalSlots(Number(e.target.value))}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    min={1}
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <textarea
+                    placeholder="Enter event description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                  <input
+                    type="text"
+                    placeholder="Enter event location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    required
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-md font-medium transition-colors duration-200"
                 >
-                  <option value="Funding">Funding</option>
-                  <option value="Pitching">Pitching</option>
-                  <option value="Networking">Networking</option>
-                  <option value="Fair">Fair</option>
-                </select>
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors duration-200 flex items-center"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Create Event
+                </button>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Total Slots</label>
-                <input
-                  type="number"
-                  placeholder="Enter total slots"
-                  value={totalSlots}
-                  onChange={(e) => setTotalSlots(Number(e.target.value))}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  min={1}
-                  required
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  placeholder="Enter event description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  required
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <input
-                  type="text"
-                  placeholder="Enter event location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-md font-medium transition-colors duration-200"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors duration-200 flex items-center"
-              >
-                <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Create Event
-              </button>
-            </div>
-          </form>
-        </div>
+            </form>
+          </div>
         )}
 
         {/* Events Grid */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">All Events ({events.length})</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            All Events ({events.length})
+          </h2>
           
           {events.length === 0 ? (
             <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
@@ -280,14 +320,14 @@ const AdminEventsPage = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
                           <span className="text-sm text-gray-600">
-                            Slots: <span className={`font-medium ${getOccupancyColor(event.bookedSlots, event.totalSlots)}`}>
-                              {event.bookedSlots}/{event.totalSlots}
+                            Slots: <span className={`font-medium ${getOccupancyColor(event.bookedSlots || 0, event.totalSlots || 1)}`}>
+                              {event.bookedSlots || 0}/{event.totalSlots || 1}
                             </span>
                           </span>
                         </div>
                         
                         <div className="text-xs text-gray-500">
-                          {((event.bookedSlots / event.totalSlots) * 100).toFixed(0)}% filled
+                          {Math.round(((event.bookedSlots || 0) / (event.totalSlots || 1)) * 100)}% filled
                         </div>
                       </div>
                     </div>

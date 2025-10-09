@@ -224,6 +224,14 @@ const Navbar = () => {
     navigate(`/${role}/${id}/${path}`);
   };
 
+  const navigatetologin = () => {
+    navigate('/login');
+  };
+
+  const navigatetosignup = () => {
+    navigate('/register');
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg border-b border-gray-200/50">
       <nav className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
@@ -251,6 +259,10 @@ const Navbar = () => {
           <li><a className={linkClass} href="#roles">Platform</a></li>
           <li><a className={linkClass} href="#testimonials">Success Stories</a></li>
         </ul>
+
+        <button className='ml-auto border border-blue-300 px-3 py-2 text-sm hover:bg-blue-500 hover:text-white rounded-xl transition-colors' onClick={navigatetologin}>Login</button>
+        <button className='ml-3 border border-blue-300 px-3 py-2 text-sm hover:bg-blue-500 hover:text-white rounded-xl transition-colors' onClick={navigatetosignup}>Signup</button>
+
 
         <div className="hidden md:flex items-center gap-3">
         
