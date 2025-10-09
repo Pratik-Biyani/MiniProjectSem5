@@ -1,7 +1,8 @@
 // components/ProfileModal.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useSubscription } from '../context/SubscriptionContext';
 
 const ProfileModal = ({ isOpen, onClose, userId }) => {
   const [userData, setUserData] = useState(null);
@@ -9,13 +10,18 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
   const [error, setError] = useState('');
   const [usingMockData, setUsingMockData] = useState(false);
   
-  // Get user_id from URL params for subscription link
+  const { subscription, fetchUserSubscription } = useSubscription();
   const { investor_id, admin_id, startup_id } = useParams();
+  const navigate = useNavigate();
+  
   const currentUserId = investor_id || admin_id || startup_id || userId;
 
   useEffect(() => {
     if (isOpen && userId) {
       fetchUserData();
+      if (userId) {
+        fetchUserSubscription(userId);
+      }
     }
   }, [isOpen, userId]);
 
@@ -27,7 +33,6 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
     try {
       console.log('🔄 ProfileModal: Fetching user data for ID:', userId);
       
-      // Try different backend URLs like in your dashboard
       const backendURLs = [
         `http://localhost:5001/api/users/${userId}`,
         `http://localhost:3001/api/users/${userId}`,
@@ -61,7 +66,6 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
     } catch (err) {
       console.error('❌ API Error, using mock data:', err);
       
-      // Fallback to mock data based on user role from URL
       let role = 'investor';
       let name = 'Demo Investor';
       let domain = undefined;
@@ -80,13 +84,14 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
         name: name,
         email: `${userId}@example.com`,
         role: role,
-        isSubscribed: true,
+        isSubscribed: false,
         createdAt: new Date().toISOString(),
         domain: domain,
         subscription: {
           plan: 'basic',
-          status: 'active',
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          status: 'pending',
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false
         }
       };
       
@@ -108,14 +113,12 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
     try {
       const newSubscriptionStatus = !userData.isSubscribed;
       
-      // Update local state immediately for better UX
       setUserData(prev => ({
         ...prev,
         isSubscribed: newSubscriptionStatus
       }));
 
       if (!usingMockData) {
-        // Only call API if we're using real data
         try {
           const response = await axios.put(`/api/users/${userId}/subscription`, {
             isSubscribed: newSubscriptionStatus
@@ -130,12 +133,18 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
     } catch (err) {
       console.error('Error updating subscription:', err);
       setError('Failed to update subscription');
-      // Revert on error
       setUserData(prev => ({
         ...prev,
         isSubscribed: !prev.isSubscribed
       }));
     }
+  };
+
+  const handleManageSubscription = () => {
+    const role = userData?.role || 'investor';
+    const userId = userData?._id || currentUserId;
+    navigate(`/${role}/${userId}/subscription`);
+    onClose();
   };
 
   const getPlanColor = (plan) => {
@@ -155,6 +164,18 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
       default: return 'Basic';
     }
   };
+
+  const getSubscriptionStatus = () => {
+    if (!userData) return 'inactive';
+    
+    if (subscription) {
+      return subscription.status;
+    }
+    
+    return userData.isSubscribed ? 'active' : 'inactive';
+  };
+
+  const isSubscriptionActive = getSubscriptionStatus() === 'active';
 
   if (!isOpen) return null;
 
@@ -259,8 +280,22 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
                 {/* Current Plan */}
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-gray-700">Current Plan</span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getPlanColor(userData.subscription?.plan || 'basic')}`}>
-                    {getPlanName(userData.subscription?.plan || 'basic')}
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    getPlanColor(subscription?.plan || userData.subscription?.plan || 'basic')
+                  }`}>
+                    {getPlanName(subscription?.plan || userData.subscription?.plan || 'basic')}
+                  </span>
+                </div>
+
+                {/* Subscription Status */}
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-gray-700">Status</span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    isSubscriptionActive 
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {isSubscriptionActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
 
@@ -277,11 +312,13 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
                 </div>
 
                 {/* Subscription End Date */}
-                {userData.subscription?.currentPeriodEnd && (
+                {(subscription?.currentPeriodEnd || userData.subscription?.currentPeriodEnd) && (
                   <div className="flex justify-between items-center mb-4 text-sm">
-                    <span className="text-gray-600">Renews on</span>
+                    <span className="text-gray-600">
+                      {subscription?.cancelAtPeriodEnd ? 'Expires on' : 'Renews on'}
+                    </span>
                     <span className="text-gray-900">
-                      {new Date(userData.subscription.currentPeriodEnd).toLocaleDateString()}
+                      {new Date(subscription?.currentPeriodEnd || userData.subscription.currentPeriodEnd).toLocaleDateString()}
                     </span>
                   </div>
                 )}
@@ -298,15 +335,24 @@ const ProfileModal = ({ isOpen, onClose, userId }) => {
                   {userData.isSubscribed ? 'Unsubscribe from Newsletter' : 'Subscribe to Newsletter'}
                 </button>
 
-                {/* Upgrade Plan Button */}
-                {(!userData.subscription?.plan || userData.subscription?.plan === 'basic') && (
-                  <a
-                    href={`/investor/${investor_id}/subscription`}
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-2 px-4 rounded-lg transition duration-200 text-center block"
-                  >
-                    Upgrade Your Plan
-                  </a>
-                )}
+                {/* Subscription Management Buttons */}
+                <div className="space-y-2">
+                  {!isSubscriptionActive ? (
+                    <button
+                      onClick={handleManageSubscription}
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-2 px-4 rounded-lg transition duration-200 text-center"
+                    >
+                      Upgrade Your Plan
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleManageSubscription}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition duration-200 text-center"
+                    >
+                      Manage Subscription
+                    </button>
+                  )}
+                </div>
 
                 {usingMockData && (
                   <p className="text-xs text-gray-500 mt-2 text-center">
