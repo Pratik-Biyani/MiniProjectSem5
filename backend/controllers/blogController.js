@@ -1,24 +1,18 @@
 const Blog = require('../models/Blog');
 
 // Create new blog
+// Create new blog - UPDATED VERSION
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content, tags, authorName, authorRole, authorId } = req.body;
+    const { title, content, tags } = req.body;
 
-    // Check if user is admin or investor
-    if (!['admin', 'investor'].includes(authorRole)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Only admins and investors can create blogs'
-      });
-    }
-
+    // Use authenticated user from req.user (from JWT token)
     const blogData = {
       title,
       content,
-      authorName,
-      authorRole,
-      authorId,
+      authorName: req.user.name,
+      authorRole: req.user.role,
+      authorId: req.user._id,
       tags: tags ? tags.split(',').map(tag => tag.trim()) : []
     };
 

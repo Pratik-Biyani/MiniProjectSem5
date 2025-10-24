@@ -1,5 +1,7 @@
 // App.jsx
 import React from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SocketProvider } from './context/SocketContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -52,6 +54,8 @@ import SubscriptionPage from './pages/SubscriptionPage';
 // Chat & Call Pages
 import Chat from './pages/Chat';
 import VideoCall from './pages/VideoCall';
+
+gsap.registerPlugin(ScrollTrigger);
 
 // Loading component
 const LoadingSpinner = () => (

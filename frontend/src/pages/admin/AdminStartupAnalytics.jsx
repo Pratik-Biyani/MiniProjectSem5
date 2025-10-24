@@ -13,26 +13,86 @@ const AdminStartupAnalytics = () => {
   const [metrics, setMetrics] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [availablePeriods, setAvailablePeriods] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchMetrics() {
-      const res = await api.get(`/analytics/startup/${startup_id}/metrics`);
-      
-      // Sort metrics chronologically by period
-      const sortedMetrics = res.data.sort((a, b) => {
-        const [aMonth, aYear] = a.period.split(' ');
-        const [bMonth, bYear] = b.period.split(' ');
-        const aDate = new Date(`${aMonth} 1, ${aYear}`);
-        const bDate = new Date(`${bMonth} 1, ${bYear}`);
-        return aDate - bDate;
-      });
-      
-      setAllMetrics(sortedMetrics);
-      setMetrics(sortedMetrics);
-      
-      // Extract unique periods for filter
-      const periods = [...new Set(sortedMetrics.map(m => m.period))];
-      setAvailablePeriods(periods);
+      try {
+        setLoading(true);
+        setError(null);
+        console.log('🔄 Fetching analytics for startup:', startup_id);
+        
+        const res = await api.get(`/analytics/startup/${startup_id}/metrics`);
+        console.log('📊 Analytics API Response:', res); // Debug log
+        
+        // FIX: Handle different response structures
+        let metricsData = [];
+        
+        if (Array.isArray(res)) {
+          // Direct array response
+          metricsData = res;
+          console.log('✅ Using direct array response');
+        } else if (res.data && Array.isArray(res.data)) {
+          // Response with data property containing array
+          metricsData = res.data;
+          console.log('✅ Using res.data array');
+        } else if (res.metrics && Array.isArray(res.metrics)) {
+          // Response with metrics property
+          metricsData = res.metrics;
+          console.log('✅ Using res.metrics array');
+        } else if (res.data && res.data.metrics && Array.isArray(res.data.metrics)) {
+          // Nested response
+          metricsData = res.data.metrics;
+          console.log('✅ Using res.data.metrics array');
+        } else {
+          console.warn('⚠️ Unexpected response structure:', res);
+          metricsData = [];
+        }
+        
+        // Make sure we have valid data before sorting
+        if (metricsData.length === 0) {
+          console.log('📭 No metrics data found');
+          setAllMetrics([]);
+          setMetrics([]);
+          setAvailablePeriods([]);
+          return;
+        }
+        
+        // Sort metrics chronologically by period
+        const sortedMetrics = metricsData.sort((a, b) => {
+          try {
+            // Handle missing period data
+            if (!a.period || !b.period) return 0;
+            
+            const [aMonth, aYear] = a.period.split(' ');
+            const [bMonth, bYear] = b.period.split(' ');
+            const aDate = new Date(`${aMonth} 1, ${aYear}`);
+            const bDate = new Date(`${bMonth} 1, ${bYear}`);
+            return aDate - bDate;
+          } catch (error) {
+            console.error('Error sorting metrics:', error);
+            return 0;
+          }
+        });
+        
+        console.log('✅ Sorted metrics:', sortedMetrics);
+        setAllMetrics(sortedMetrics);
+        setMetrics(sortedMetrics);
+        
+        // Extract unique periods for filter
+        const periods = [...new Set(sortedMetrics.map(m => m.period).filter(Boolean))];
+        setAvailablePeriods(periods);
+        
+      } catch (err) {
+        console.error('❌ Error fetching analytics:', err);
+        setError('Failed to load analytics data. Please check if the startup exists and has metrics.');
+        setAllMetrics([]);
+        setMetrics([]);
+        setAvailablePeriods([]);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchMetrics();
   }, [startup_id]);
@@ -46,7 +106,7 @@ const AdminStartupAnalytics = () => {
     }
   }, [selectedPeriod, allMetrics]);
 
-  // Calculate key metrics
+  // Calculate key metrics with safe defaults
   const latestMetric = metrics[metrics.length - 1] || {};
   const previousMetric = metrics[metrics.length - 2] || {};
   const firstMetric = metrics[0] || {};
@@ -56,24 +116,24 @@ const AdminStartupAnalytics = () => {
     return ((current - previous) / previous * 100).toFixed(1);
   };
 
-  const revenueChange = calculateChange(latestMetric.revenue, previousMetric.revenue);
-  const profitChange = calculateChange(latestMetric.profit, previousMetric.profit);
-  const usersChange = calculateChange(latestMetric.totalUsers, previousMetric.totalUsers);
+  const revenueChange = calculateChange(latestMetric.revenue || 0, previousMetric.revenue || 0);
+  const profitChange = calculateChange(latestMetric.profit || 0, previousMetric.profit || 0);
+  const usersChange = calculateChange(latestMetric.totalUsers || 0, previousMetric.totalUsers || 0);
 
   const totalRevenue = metrics.reduce((sum, m) => sum + (m.revenue || 0), 0);
   const totalProfit = metrics.reduce((sum, m) => sum + (m.profit || 0), 0);
   const avgRevenue = metrics.length > 0 ? (totalRevenue / metrics.length) : 0;
   const profitMargin = latestMetric.revenue ? ((latestMetric.profit / latestMetric.revenue) * 100).toFixed(1) : 0;
   const userGrowthRate = metrics.length > 1 ? 
-    (((latestMetric.totalUsers - metrics[0].totalUsers) / metrics[0].totalUsers) * 100).toFixed(1) : 0;
+    (((latestMetric.totalUsers - firstMetric.totalUsers) / firstMetric.totalUsers) * 100).toFixed(1) : 0;
 
-  // Main trend chart with gradients
+  // Chart data with safe defaults
   const trendChartData = {
-    labels: metrics.map(m => m.period),
+    labels: metrics.map(m => m.period || 'Unknown'),
     datasets: [
       {
         label: 'Revenue',
-        data: metrics.map(m => m.revenue),
+        data: metrics.map(m => m.revenue || 0),
         borderColor: '#3b82f6',
         backgroundColor: (context) => {
           const ctx = context.chart.ctx;
@@ -93,7 +153,7 @@ const AdminStartupAnalytics = () => {
       },
       {
         label: 'Profit',
-        data: metrics.map(m => m.profit),
+        data: metrics.map(m => m.profit || 0),
         borderColor: '#10b981',
         backgroundColor: (context) => {
           const ctx = context.chart.ctx;
@@ -115,11 +175,11 @@ const AdminStartupAnalytics = () => {
   };
 
   const userGrowthData = {
-    labels: metrics.map(m => m.period),
+    labels: metrics.map(m => m.period || 'Unknown'),
     datasets: [
       {
         label: 'Total Users',
-        data: metrics.map(m => m.totalUsers),
+        data: metrics.map(m => m.totalUsers || 0),
         borderColor: '#f59e0b',
         backgroundColor: (context) => {
           const ctx = context.chart.ctx;
@@ -142,11 +202,11 @@ const AdminStartupAnalytics = () => {
 
   // Monthly comparison bar chart
   const monthlyComparisonData = {
-    labels: metrics.slice(-8).map(m => m.period),
+    labels: metrics.slice(-8).map(m => m.period || 'Unknown'),
     datasets: [
       {
         label: 'Revenue',
-        data: metrics.slice(-8).map(m => m.revenue),
+        data: metrics.slice(-8).map(m => m.revenue || 0),
         backgroundColor: (context) => {
           const ctx = context.chart.ctx;
           const gradient = ctx.createLinearGradient(0, 0, 0, 300);
@@ -159,7 +219,7 @@ const AdminStartupAnalytics = () => {
       },
       {
         label: 'Profit',
-        data: metrics.slice(-8).map(m => m.profit),
+        data: metrics.slice(-8).map(m => m.profit || 0),
         backgroundColor: (context) => {
           const ctx = context.chart.ctx;
           const gradient = ctx.createLinearGradient(0, 0, 0, 300);
@@ -175,9 +235,9 @@ const AdminStartupAnalytics = () => {
 
   // Performance distribution
   const revenueDistributionData = {
-    labels: metrics.slice(-6).map(m => m.period),
+    labels: metrics.slice(-6).map(m => m.period || 'Unknown'),
     datasets: [{
-      data: metrics.slice(-6).map(m => m.revenue),
+      data: metrics.slice(-6).map(m => m.revenue || 0),
       backgroundColor: [
         '#3b82f6',
         '#8b5cf6',
@@ -366,7 +426,7 @@ const AdminStartupAnalytics = () => {
         callbacks: {
           label: function(context) {
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = ((context.parsed / total) * 100).toFixed(1);
+            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
             return `${context.label}: $${context.parsed.toLocaleString()} (${percentage}%)`;
           }
         }
@@ -456,6 +516,56 @@ const AdminStartupAnalytics = () => {
     </div>
   );
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Analytics</h3>
+          <p className="text-gray-600">Fetching startup performance data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Eye className="w-8 h-8 text-red-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Analytics Unavailable</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (metrics.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <BarChart2 className="w-8 h-8 text-blue-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analytics Data</h3>
+          <p className="text-gray-600 mb-4">This startup doesn't have any metrics data yet.</p>
+          <p className="text-sm text-gray-500">Metrics will appear here once they are added to the system.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -473,19 +583,21 @@ const AdminStartupAnalytics = () => {
             </div>
             
             {/* Period Filter */}
-            <div className="flex items-center bg-white rounded-xl shadow-lg px-4 py-3 border border-gray-200">
-              <Calendar className="w-5 h-5 text-gray-500 mr-3" />
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="bg-transparent text-gray-700 font-semibold focus:outline-none cursor-pointer pr-2"
-              >
-                <option value="all">All Periods</option>
-                {availablePeriods.map(period => (
-                  <option key={period} value={period}>{period}</option>
-                ))}
-              </select>
-            </div>
+            {availablePeriods.length > 0 && (
+              <div className="flex items-center bg-white rounded-xl shadow-lg px-4 py-3 border border-gray-200">
+                <Calendar className="w-5 h-5 text-gray-500 mr-3" />
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  className="bg-transparent text-gray-700 font-semibold focus:outline-none cursor-pointer pr-2"
+                >
+                  <option value="all">All Periods</option>
+                  {availablePeriods.map(period => (
+                    <option key={period} value={period}>{period}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -510,7 +622,7 @@ const AdminStartupAnalytics = () => {
           <InvestorStatCard
             icon={Users}
             title="Total Users"
-            value={latestMetric.totalUsers}
+            value={latestMetric.totalUsers || 0}
             change={usersChange}
             gradient="bg-gradient-to-br from-orange-500 to-amber-600"
             subtitle={`${userGrowthRate}% total growth`}
