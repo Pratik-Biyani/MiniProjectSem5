@@ -16,6 +16,8 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const authRoutes = require('./routes/authRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const startupRoutes = require('./routes/startupRoutes');
+const additionalInfoRoutes = require('./routes/additionalInfo');
+
 
 // Import chat routes and socket service
 const chatRoutes = require('./routes/chatRoutes');
@@ -60,6 +62,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api', blogRoutes);
 app.use('/api', startupRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/additional-info', additionalInfoRoutes);
+
 
 // Chat routes
 app.use('/api/chat', chatRoutes);
