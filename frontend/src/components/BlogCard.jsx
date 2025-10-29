@@ -55,7 +55,8 @@ const BlogCard = ({ blog, currentUser, onUpdate }) => {
       await api.delete(`/blogs/${blog._id}/comment/${commentId}`, {
         data: {
           userId: currentUser.id,
-          userRole: currentUser.role
+          userRole: currentUser.role,
+          userName: currentUser.name 
         }
       });
       onUpdate();
