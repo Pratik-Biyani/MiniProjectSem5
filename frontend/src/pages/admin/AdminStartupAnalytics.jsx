@@ -4,6 +4,7 @@ import { api } from '../../api/api';
 import { Line, Bar, Doughnut, Radar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, RadialLinearScale, Filler } from 'chart.js';
 import { TrendingUp, DollarSign, Users, Eye, Activity, BarChart2, PieChart as PieChartIcon, Calendar, Award, Target, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import BackButton from '../../components/BackButton';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Filler, Title, Tooltip, Legend);
 
@@ -568,6 +569,7 @@ const AdminStartupAnalytics = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+      <BackButton text="Back"/>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
