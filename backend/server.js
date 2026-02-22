@@ -18,6 +18,10 @@ const blogRoutes = require('./routes/blogRoutes');
 const startupRoutes = require('./routes/startupRoutes');
 const additionalInfoRoutes = require('./routes/additionalInfo');
 const fundRequestRoutes = require('./routes/fundRequestRoutes');
+const governanceRoutes = require('./routes/governanceRoutes');
+const investorAnalyticsRoutes = require('./routes/investorAnalyticsRoutes');
+const investorRoutes = require('./routes/investorRoutes');
+const startupProfileRoutes = require('./routes/startupProfileRoutes');
 
 
 // Import chat routes and socket service
@@ -65,7 +69,10 @@ app.use('/api', startupRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/additional-info', additionalInfoRoutes);
 app.use('/api/fund-requests', fundRequestRoutes);
-
+app.use('/api/governance', governanceRoutes);
+app.use('/api/investor-analytics', investorAnalyticsRoutes);
+app.use('/api/investors', investorRoutes);
+app.use('/api/startups', startupProfileRoutes);
 
 // Chat routes
 app.use('/api/chat', chatRoutes);

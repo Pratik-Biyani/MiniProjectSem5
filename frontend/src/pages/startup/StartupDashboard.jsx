@@ -12,13 +12,14 @@ import BrowseInvestorsPage from './BrowseInvestors';
 import ResourcesPage from '../ResourcesPage';
 import GovermentSchemes from '../GovernmentSchemes';
 import StartupAddMetrics from './StartupAddMetrics';
+import StartupGovernance from './StartupGovernance';
 
 const StartupDashboard = () => {
   const [activeSection, setActiveSection] = useState('analytics');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Get startup_id from URL params
   const { startup_id } = useParams();
 
@@ -26,6 +27,10 @@ const StartupDashboard = () => {
     analytics: {
       title: 'Startup Analytics',
       component: <StartupAnalytics />
+    },
+    governance: {
+      title: 'Governance',
+      component: <StartupGovernance />
     },
     addMetrics: {
       title: 'Add Metrics',
@@ -49,16 +54,17 @@ const StartupDashboard = () => {
     },
     investors: {
       title: 'Browse Investors',
-      component: <BrowseInvestorsPage />  
+      component: <BrowseInvestorsPage />
     },
     resources: {
       title: 'Resources',
-      component: <ResourcesPage/>
+      component: <ResourcesPage />
     },
     govt_schemes: {
       title: 'Government Schemes',
-      component: <GovermentSchemes/>
+      component: <GovermentSchemes />
     }
+
   };
 
   // Fetch user data when component mounts
@@ -71,7 +77,7 @@ const StartupDashboard = () => {
   const fetchUserData = async () => {
     try {
       console.log('Fetching user data for ID:', startup_id);
-      
+
       // Try different backend URLs
       const backendURLs = [
         `http://localhost:5001/api/users/${startup_id}`,
@@ -79,7 +85,7 @@ const StartupDashboard = () => {
         `http://localhost:8001/api/users/${startup_id}`,
         `/api/users/${startup_id}`  // Relative path (if using proxy)
       ];
-      
+
       let response;
       for (const url of backendURLs) {
         try {
@@ -92,13 +98,13 @@ const StartupDashboard = () => {
           continue;
         }
       }
-      
+
       if (response) {
         setUserData(response.data);
       } else {
         throw new Error('All backend URLs failed');
       }
-      
+
     } catch (error) {
       console.error('Error fetching user data:', error);
       // Use mock data as fallback
@@ -127,11 +133,10 @@ const StartupDashboard = () => {
           {Object.keys(sections).map((section) => (
             <button
               key={section}
-              className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition duration-200 ${
-                activeSection === section
+              className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition duration-200 ${activeSection === section
                   ? 'bg-indigo-800 text-white'
                   : 'text-indigo-100 hover:bg-indigo-600'
-              }`}
+                }`}
               onClick={() => setActiveSection(section)}
             >
               {sections[section].title}
@@ -149,9 +154,9 @@ const StartupDashboard = () => {
               <button className="p-2 text-gray-600 hover:text-gray-900">
                 <span className="text-xl">🔔</span>
               </button>
-              
+
               {/* Profile Trigger */}
-              <button 
+              <button
                 onClick={() => setIsProfileOpen(true)}
                 className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-full transition duration-200 cursor-pointer"
               >
@@ -179,7 +184,7 @@ const StartupDashboard = () => {
       </div>
 
       {/* Profile Modal - This is rendered inside the dashboard */}
-      <ProfileModal 
+      <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         userId={startup_id}

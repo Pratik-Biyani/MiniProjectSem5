@@ -35,6 +35,7 @@ import StartupBlogs from './pages/startup/StartupBlogs';
 import StartupAnalysis from './pages/startup/StartupAnalysis';
 import StartupAnalysisHistory from './pages/startup/StartupAnalysisHistory';
 import BrowseInvestorsPage from './pages/startup/BrowseInvestors';
+import StartupGovernance from './pages/startup/StartupGovernance'; // Import the new governance page
 
 // Investor Pages
 import InvestorAnalytics from './pages/investor/InvestorAnalytics';
@@ -220,6 +221,12 @@ const App = () => {
               <Route path="/startup/:startup_id/browse-investors" element={
                 <ProtectedRoute requiredRole="startup">
                   <BrowseInvestorsPage />
+                </ProtectedRoute>
+              } />
+              {/* New Governance Route */}
+              <Route path="/startup/:startup_id/governance" element={
+                <ProtectedRoute requiredRole="startup">
+                  <StartupGovernance />
                 </ProtectedRoute>
               } />
 
