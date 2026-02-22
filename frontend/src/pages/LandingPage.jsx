@@ -665,10 +665,10 @@ const LandingPage = () => {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <button
-                  onClick={handleExploreDemo}
+                  onClick={() => navigate("/idea-finder")}
                   className="px-8 py-4 bg-white/80 backdrop-blur-sm border-2 border-gray-300 text-gray-700 rounded-2xl font-semibold hover:border-purple-400 hover:text-purple-700 transition-all duration-300 hover:scale-105"
                 >
-                  Explore Live Demo
+                  Do Not Have Any Startup Idea?
                 </button>
               </div>
 

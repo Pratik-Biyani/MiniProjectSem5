@@ -16,6 +16,7 @@ import RegisterPage from './pages/RegisterPage';
 import LandingPage from './pages/LandingPage';
 import ResourcesPage from './pages/ResourcesPage';
 import GovernmentSchemes from './pages/GovernmentSchemes';
+import IdeaFinder from './components/IdeaFinder';
 
 // Admin Pages
 import AdminEventsPage from './pages/admin/AdminEventsPage';
@@ -91,6 +92,7 @@ const App = () => {
           <Router>
             <Routes>
               {/* Public Routes - Redirect to dashboard if already logged in */}
+              <Route path="/idea-finder" element={<IdeaFinder />} />
               <Route path="/" element={
                 <PublicRoute>
                   <LandingPage />
