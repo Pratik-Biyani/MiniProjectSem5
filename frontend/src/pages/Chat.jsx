@@ -12,6 +12,8 @@ import {
   Phone
 } from 'lucide-react';
 import axios from 'axios';
+import FundRequestForm from '../components/FundRequestForm';
+import FundRequestMessage from '../components/FundRequestMessage';
 
 const Chat = () => {
   const { startup_id, investor_id, admin_id } = useParams();
@@ -39,6 +41,9 @@ const Chat = () => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [callStatus, setCallStatus] = useState('');
   const [activeCalls, setActiveCalls] = useState({});
+  const [showFundRequestForm, setShowFundRequestForm] = useState(false);
+  const [fundRequests, setFundRequests] = useState({});
+  const [processingPayment, setProcessingPayment] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
@@ -135,6 +140,23 @@ const Chat = () => {
           data.message.roomId = roomId;
         }
       }
+
+      // Load fund request data if this is a fund request message
+      if (data.message.messageType === 'fund_request' && data.message.fundRequestId) {
+        console.log('💰 Fund request message received:', data.message.fundRequestId);
+        // Fetch the full fund request details
+        axios.get(`${API_URL}/fund-requests/${data.message.fundRequestId}`)
+          .then(res => {
+            if (res.data.success) {
+              setFundRequests(prev => ({
+                ...prev,
+                [res.data.data._id]: res.data.data
+              }));
+              console.log('✅ Fund request loaded:', res.data.data._id);
+            }
+          })
+          .catch(err => console.error('❌ Error loading fund request:', err));
+      }
       
       if (selectedUser && (
         data.message.senderId === selectedUser.userId || 
@@ -165,6 +187,24 @@ const Chat = () => {
     const handleConversationData = (data) => {
       console.log('💬 Conversation data received:', data);
       setMessages(data.messages || []);
+
+      // Load all fund requests from the conversation
+      if (data.messages) {
+        data.messages.forEach(msg => {
+          if (msg.messageType === 'fund_request' && msg.fundRequestId) {
+            axios.get(`${API_URL}/fund-requests/${msg.fundRequestId}`)
+              .then(res => {
+                if (res.data.success) {
+                  setFundRequests(prev => ({
+                    ...prev,
+                    [res.data.data._id]: res.data.data
+                  }));
+                }
+              })
+              .catch(err => console.error('❌ Error loading fund request:', err));
+          }
+        });
+      }
     };
 
     const handleUserTyping = (data) => {
@@ -400,6 +440,281 @@ const Chat = () => {
   const handleGoHome = useCallback(() => {
     navigate('/');
   }, [navigate]);
+
+  const handleFundRequest = useCallback(() => {
+    // Only startups can send fund requests
+    if (currentUser.role !== 'startup') {
+      alert('Only startups can send fund requests');
+      return;
+    }
+
+    // Can only send to investors
+    if (selectedUser && selectedUser.role !== 'investor') {
+      alert('Fund requests can only be sent to investors');
+      return;
+    }
+
+    if (!selectedUser) {
+      alert('Please select an investor first');
+      return;
+    }
+    setShowFundRequestForm(true);
+  }, [selectedUser, currentUser]);
+
+  const handleFundRequestSubmit = useCallback(async (requestData) => {
+    if (!selectedUser || !currentUser) return;
+
+    try {
+      // Step 1: Create fund request in backend
+      const fundRequestRes = await axios.post(`${API_URL}/fund-requests`, {
+        startupId: currentUser.id,
+        investorId: selectedUser.userId,
+        currentUserId: currentUser.id,
+        amount: requestData.amount,
+        fundingType: requestData.fundingType,
+        equityPercentage: requestData.equityPercentage || null,
+        interestRate: requestData.interestRate || null,
+        loanTenure: requestData.loanTenure || '',
+        description: requestData.description,
+        useOfFunds: requestData.useOfFunds,
+        companyName: requestData.companyName,
+        domain: requestData.domain,
+        yearOfEstablishment: requestData.yearOfEstablishment,
+        teamSize: requestData.teamSize,
+        previousFunding: requestData.previousFunding || 0,
+        fundingTimeline: requestData.fundingTimeline,
+        milestone: requestData.milestone || ''
+      });
+
+      if (!fundRequestRes.data.success) {
+        throw new Error(fundRequestRes.data.message || 'Failed to create fund request');
+      }
+
+      const fundRequest = fundRequestRes.data.data;
+      console.log('✅ Step 1: Fund request created:', fundRequest._id);
+
+      // Step 2: Send fund request as a message
+      const messageRes = await axios.post(`${API_URL}/fund-requests/message/send`, {
+        fundRequestId: fundRequest._id,
+        senderId: currentUser.id,
+        receiverId: selectedUser.userId
+      });
+
+      if (!messageRes.data.success) {
+        throw new Error(messageRes.data.message || 'Failed to send fund request message');
+      }
+
+      console.log('✅ Step 2: Fund request message sent:', messageRes.data.data.message._id);
+
+      // Store fund request for reference
+      setFundRequests(prev => ({
+        ...prev,
+        [fundRequest._id]: fundRequest
+      }));
+
+      // Step 3: Send message via socket (non-blocking)
+      if (socket) {
+        socket.emit('send_message', {
+          receiverId: selectedUser.userId,
+          content: `Fund Request: ${requestData.fundingType.toUpperCase()} | Amount: ₹${requestData.amount.toLocaleString('en-IN')} for ${requestData.companyName}`,
+          messageType: 'fund_request',
+          fundRequestId: fundRequest._id
+        });
+        console.log('✅ Step 3: Socket message emitted');
+      }
+
+      // Clear form and close modal only on success
+      setShowFundRequestForm(false);
+      console.log('✅ Fund request sent successfully:', fundRequest._id);
+      
+      // Show success message
+      alert('Fund request sent successfully!');
+    } catch (error) {
+      // Re-throw error for FundRequestForm to catch and display
+      console.error('❌ Error sending fund request:', error?.response?.data?.message || error?.message || error);
+      throw new Error(error?.response?.data?.message || error?.message || 'Failed to send fund request');
+    }
+  }, [selectedUser, currentUser, socket, API_URL]);
+
+  const handleApproveFundRequest = useCallback(async (fundRequestId) => {
+    // Only investors can approve
+    if (currentUser.role !== 'investor') {
+      alert('Only investors can approve fund requests');
+      return;
+    }
+
+    try {
+      const response = await axios.put(
+        `${API_URL}/fund-requests/${fundRequestId}/approve`,
+        { currentUserId: currentUser.id }
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to approve fund request');
+      }
+
+      // Update fund request in state
+      setFundRequests(prev => ({
+        ...prev,
+        [fundRequestId]: response.data.data
+      }));
+
+      // Notify startup via socket
+      if (socket && selectedUser) {
+        socket.emit('send_message', {
+          receiverId: selectedUser.userId,
+          content: `✅ Your fund request has been APPROVED! You can now proceed to payment.`,
+          messageType: 'text'
+        });
+      }
+
+      alert('Fund request approved successfully!');
+      console.log('✅ Fund request approved:', fundRequestId);
+    } catch (error) {
+      console.error('❌ Error approving fund request:', error?.response?.data?.message || error?.message || error);
+      alert(error?.response?.data?.message || error?.message || 'Failed to approve fund request');
+    }
+  }, [API_URL, socket, selectedUser, currentUser]);
+
+  const handleRejectFundRequest = useCallback(async (fundRequestId, reason) => {
+    // Only investors can reject
+    if (currentUser.role !== 'investor') {
+      alert('Only investors can reject fund requests');
+      return;
+    }
+
+    try {
+      const response = await axios.put(
+        `${API_URL}/fund-requests/${fundRequestId}/reject`,
+        { rejectionReason: reason, currentUserId: currentUser.id }
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to reject fund request');
+      }
+
+      // Update fund request in state
+      setFundRequests(prev => ({
+        ...prev,
+        [fundRequestId]: response.data.data
+      }));
+
+      // Notify startup via socket
+      if (socket && selectedUser) {
+        socket.emit('send_message', {
+          receiverId: selectedUser.userId,
+          content: `❌ Your fund request has been REJECTED. Reason: ${reason || 'No reason provided'}`,
+          messageType: 'text'
+        });
+      }
+
+      alert('Fund request rejected successfully!');
+      console.log('✅ Fund request rejected:', fundRequestId);
+    } catch (error) {
+      console.error('❌ Error rejecting fund request:', error?.response?.data?.message || error?.message || error);
+      alert(error?.response?.data?.message || error?.message || 'Failed to reject fund request');
+    }
+  }, [API_URL, socket, selectedUser, currentUser]);
+
+  const handleFundRequestPayment = useCallback(async (fundRequest) => {
+    // Only investors can process payment
+    if (currentUser.role !== 'investor') {
+      alert('Only investors can process fund transfers');
+      return;
+    }
+
+    if (processingPayment) return;
+    setProcessingPayment(true);
+
+    try {
+      // Step 1: Create Razorpay order
+      // Generate a short receipt (max 40 chars for Razorpay)
+      const timestamp = Date.now().toString().slice(-8); // Last 8 digits
+      const shortId = fundRequest._id.toString().slice(-8); // Last 8 chars of ID
+      const receipt = `fund_${shortId}_${timestamp}`.slice(0, 40); // Ensure max 40 chars
+      
+      const orderRes = await axios.post(`${API_URL}/payments/order`, {
+        amount: fundRequest.amount * 100, // Convert to paise
+        currency: 'INR',
+        receipt: receipt
+      });
+
+      if (!orderRes.data.success && !orderRes.data.id) {
+        throw new Error('Failed to create payment order');
+      }
+
+      const order = orderRes.data.data ? orderRes.data.data : orderRes.data;
+
+      // Step 2: Open Razorpay checkout
+      const options = {
+        key: 'rzp_test_WwmlF1M46ivOUV', // Replace with env variable
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Fund Transfer',
+        description: `Investor Funding: ${fundRequest.fundingType.toUpperCase()} - ₹${fundRequest.amount}`,
+        order_id: order.id,
+        handler: async function (response) {
+          try {
+            // Step 3: Validate payment
+            const validateRes = await axios.post(
+              `${API_URL}/fund-requests/${fundRequest._id}/payment`,
+              {
+                fundRequestId: fundRequest._id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                currentUserId: currentUser.id
+              }
+            );
+
+            if (validateRes.data.success) {
+              // Update fund request in state
+              setFundRequests(prev => ({
+                ...prev,
+                [fundRequest._id]: validateRes.data.data
+              }));
+
+              // Notify startup via socket
+              if (socket && selectedUser) {
+                socket.emit('send_message', {
+                  receiverId: selectedUser.userId,
+                  content: `💰 PAYMENT SUCCESSFUL! Fund transfer completed.\n📋 Details:\n• Type: ${fundRequest.fundingType.toUpperCase()}\n• Amount: ₹${fundRequest.amount.toLocaleString('en-IN')}\n• Payment ID: ${response.razorpay_payment_id}\n• Status: APPROVED & FUNDED`,
+                  messageType: 'text'
+                });
+              }
+
+              alert('✅ Payment successful! Fund request completed.');
+              console.log('✅ Fund request payment completed:', fundRequest._id);
+            } else {
+              throw new Error('Payment validation failed');
+            }
+          } catch (error) {
+            console.error('❌ Payment validation error:', error?.response?.data?.message || error?.message || error);
+            alert(error?.response?.data?.message || '❌ Payment validation failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: currentUser.name,
+          email: currentUser.email
+        },
+        theme: {
+          color: '#3399cc'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        console.error('Payment failed:', response.error);
+        alert('❌ Payment failed. Please try again.');
+      });
+      rzp.open();
+    } catch (error) {
+      console.error('❌ Error initiating payment:', error?.response?.data?.message || error?.message || error);
+      alert(error?.response?.data?.message || error?.message || 'Failed to initiate payment');
+    } finally {
+      setProcessingPayment(false);
+    }
+  }, [API_URL, socket, selectedUser, currentUser, processingPayment]);
 
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -697,6 +1012,26 @@ const Chat = () => {
                   
                   const message = item.content;
                   const ownMessage = isOwnMessage(message);
+
+                  // Handle fund request messages
+                  if (message.messageType === 'fund_request' && message.fundRequestId) {
+                    const fundRequest = fundRequests[message.fundRequestId];
+                    if (fundRequest) {
+                      return (
+                        <div key={item.key} className={`flex ${ownMessage ? 'justify-end' : 'justify-start'}`}>
+                          <div className="max-w-xs lg:max-w-md">
+                            <FundRequestMessage
+                              fundRequest={fundRequest}
+                              currentUser={currentUser}
+                              onApprove={handleApproveFundRequest}
+                              onReject={handleRejectFundRequest}
+                              onPayment={handleFundRequestPayment}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+                  }
                   
                   // Check if message contains video call link
                   const hasVideoCall = message.content && message.content.includes('/call/');
@@ -789,8 +1124,18 @@ const Chat = () => {
                   type="submit"
                   disabled={!newMessage.trim() || !selectedUser}
                   className="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  title="Send message"
                 >
                   <Send className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFundRequest}
+                  disabled={!selectedUser || currentUser.role !== 'startup'}
+                  className="bg-green-600 text-white p-3 rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  title={currentUser.role !== 'startup' ? 'Only startups can send fund requests' : 'Send fund request'}
+                >
+                  💰
                 </button>
               </form>
             </div>
@@ -828,6 +1173,16 @@ const Chat = () => {
           </div>
         )}
       </div>
+
+      {/* Fund Request Form Modal */}
+      {showFundRequestForm && (
+        <FundRequestForm
+          onSubmit={handleFundRequestSubmit}
+          onClose={() => setShowFundRequestForm(false)}
+          selectedUser={selectedUser}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 };

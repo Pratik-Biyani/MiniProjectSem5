@@ -17,6 +17,7 @@ const authRoutes = require('./routes/authRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 const startupRoutes = require('./routes/startupRoutes');
 const additionalInfoRoutes = require('./routes/additionalInfo');
+const fundRequestRoutes = require('./routes/fundRequestRoutes');
 
 
 // Import chat routes and socket service
@@ -63,6 +64,7 @@ app.use('/api', blogRoutes);
 app.use('/api', startupRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/additional-info', additionalInfoRoutes);
+app.use('/api/fund-requests', fundRequestRoutes);
 
 
 // Chat routes
@@ -554,7 +556,9 @@ app.get('/api/test', (req, res) => {
 // Connect DB & Start server
 connectDB();
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => {
+
+// Create server instance
+const serverInstance = server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`💬 Chat service initialized`);
   console.log(`🎥 WebRTC service initialized`);
@@ -564,4 +568,47 @@ server.listen(PORT, () => {
   console.log(`🌐 CORS enabled for: http://localhost:5173`);
   console.log(`🔗 All services running on single port: ${PORT}`);
   console.log(`📝 Subscription endpoint: POST /api/subscriptions/create-order`);
+});
+
+// Graceful shutdown handling
+const gracefulShutdown = () => {
+  console.log('\n🛑 Graceful shutdown initiated...');
+  
+  // Close socket.io connections
+  io.close();
+  console.log('✅ Socket.IO connections closed');
+  
+  // Close MongoDB connection
+  const mongoose = require('mongoose');
+  mongoose.connection.close(false, () => {
+    console.log('✅ MongoDB connection closed');
+  });
+  
+  // Close HTTP server
+  serverInstance.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
+  
+  // Force exit after 10 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.error('⚠️ Graceful shutdown timeout, forcing exit');
+    process.exit(1);
+  }, 10000);
+};
+
+// Handle termination signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  gracefulShutdown();
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown();
 });
