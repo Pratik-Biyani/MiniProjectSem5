@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -251,9 +252,12 @@ const S = `
 
   .if-err{background:rgba(232,93,155,0.08);border:1px solid rgba(232,93,155,0.3);border-radius:10px;padding:18px;color:#e85d9b;text-align:center;margin-bottom:20px;}
 
+  .back-bar{max-width:680px;margin:0 auto;padding:20px 20px 0;}
+
   @media(max-width:600px){
     .if-hdr{padding:28px 16px 0;}
     .if-prog,.if-card,.if-res,.if-chat{padding-left:14px;padding-right:14px;}
+    .back-bar{padding-left:14px;padding-right:14px;}
     .if-nav{flex-direction:column-reverse;}
     .if-btn{width:100%;text-align:center;}
     .res-body{padding:22px;}
@@ -262,6 +266,7 @@ const S = `
 `;
 
 export default function IdeaFinder() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [form, setForm] = useState({});
   const [status, setStatus] = useState("form");
@@ -458,6 +463,15 @@ export default function IdeaFinder() {
         {/* ── FORM ── */}
         {status === "form" && (
           <>
+            <div className="back-bar">
+              <button
+                className="if-btn btn-ghost"
+                onClick={() => navigate("/")}
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
+              >
+                ← Back to Home
+              </button>
+            </div>
             <div className="if-hdr">
               <div className="if-glow" />
               <div className="if-eye">StartHub · AI Idea Finder</div>
