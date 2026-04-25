@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <style>
+      /* Move chatbot up 50px and make it 20% smaller */
+      *[class*="chatbase"],
+      *[id*="chatbase"],
+      *[style*="position: fixed"] {
+        transform: translateY(-50px) scale(0.8) !important;
+        transform-origin: bottom right !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
@@ -33,7 +42,19 @@
           script.src="https://www.chatbase.co/embed.min.js";
           script.id="saVhY5uoOa75z6hRZr1nZ";  // <-- Your bot ID
           script.domain="www.chatbase.co";
-          document.body.appendChild(script)
+          document.body.appendChild(script);
+          
+          // Adjust chatbot position after it loads
+          setTimeout(() => {
+            document.querySelectorAll("*").forEach(el => {
+              if(el.style.position === "fixed" || window.getComputedStyle(el).position === "fixed") {
+                if(el.style.bottom !== "" || el.style.right !== "") {
+                  el.style.transform = "translateY(-50px) scale(0.8)";
+                  el.style.transformOrigin = "bottom right";
+                }
+              }
+            });
+          }, 3000);
         };
         if(document.readyState==="complete"){onLoad()}
         else{window.addEventListener("load",onLoad)}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const GEMINI_API_KEY = 'AIzaSyADSJ6UUR8tUQy3ibvVMSAbqjtdMCfYkbM';
 
 async function callGemini(prompt) {
   try {
